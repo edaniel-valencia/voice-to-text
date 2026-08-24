@@ -92,6 +92,9 @@ button[title="Collapse sidebar"] { display: none !important; }
 [data-testid="stSidebar"] * { color: #cbd5e1 !important; }
 
 /* ── Ajuste equilibrado de espacios en el sidebar ── */
+[data-testid="stSidebar"] .block-container {
+    padding-top: 2rem !important;
+}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
     gap: 16px !important;
 }
@@ -509,6 +512,15 @@ def transcribe_audio(audio_path: str, model, lang_code: Optional[str]):
 def export_txt(text: str) -> bytes:
     return text.encode("utf-8")
 
+def export_all_txt(history_rows: list) -> bytes:
+    lines = ["=== HISTORIAL COMPLETO DE TRANSCRIPCIONES ===\n"]
+    for row in history_rows:
+        row_id, filename, language, model_used, text, word_count, created_at = row
+        lines.append(f"[{created_at}] Archivo: {filename} | Idioma: {language} | Modelo: {model_used}")
+        lines.append(text)
+        lines.append("-" * 60 + "\n")
+    return "\n".join(lines).encode("utf-8")
+
 def export_docx(text: str, filename: str = "Transcripción") -> bytes:
     doc = Document()
     doc.add_heading("VoiceScript — Transcripción", level=0)
@@ -620,14 +632,24 @@ with st.sidebar:
     st.markdown('<p class="sidebar-header">📊 Estadísticas</p>', unsafe_allow_html=True)
     history = load_history()
     total_words = sum(r[5] for r in history) if history else 0
-    col_a, col_b = st.columns(2)
-    col_a.metric("📝 Total", len(history))
-    col_b.metric("🔤 Palabras", f"{total_words:,}")
+    st.metric("📝 Total", len(history))
+    st.metric("🔤 Palabras", f"{total_words:,}")
 
     st.markdown("---")
-    if st.button("🗑️ Borrar todo el historial", use_container_width=True):
+    
+    st.download_button(
+        "⬇️ Descargar historial completo (TXT)",
+        data=export_all_txt(history) if history else b"",
+        file_name="historial_completo_transcripciones.txt",
+        mime="text/plain",
+        use_container_width=True,
+        disabled=not history
+    )
+    
+    if st.button("🗑️ Borrar todo el historial", use_container_width=True, help="Eliminar permanentemente"):
         clear_all_history()
         st.rerun()
+            
     st.caption("Base de datos: `transcriptions.db`")
     st.caption(f"© {datetime.now().year} ADAVAM · VoiceScript")
 
@@ -715,18 +737,9 @@ with tab_record:
         </div>
         """, unsafe_allow_html=True)
 
-        rec_c1, rec_c2, rec_c3 = st.columns([5, 1, 5])
-        with rec_c2:
-            st.markdown('<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom: 24px;">', unsafe_allow_html=True)
-            audio_bytes = audio_recorder(
-                text="",
-                recording_color="#a78bfa",
-                neutral_color="#4f46e5",
-                icon_size="3x",
-                pause_threshold=3.0,
-            )
-            st.markdown('<p style="color:#e2e8f0; font-size:1rem; font-weight:600; margin-top:8px;">Grabar</p>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin-bottom: 24px;">', unsafe_allow_html=True)
+        audio_bytes = st.audio_input("Grabar")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 
@@ -743,7 +756,7 @@ with tab_record:
                     model = load_whisper_model(model_choice)
 
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                    tmp.write(audio_bytes)
+                    tmp.write(audio_bytes.getvalue())
                     tmp_path = tmp.name
 
                 try:

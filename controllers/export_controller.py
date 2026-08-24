@@ -7,6 +7,16 @@ def export_txt(text: str) -> bytes:
     """Export text to a plain TXT format byte string."""
     return text.encode("utf-8")
 
+def export_all_txt(history_rows: list) -> bytes:
+    """Combines all transcriptions into a single TXT format byte string."""
+    lines = ["=== HISTORIAL COMPLETO DE TRANSCRIPCIONES ===\n"]
+    for row in history_rows:
+        row_id, filename, language, model_used, text, word_count, created_at = row
+        lines.append(f"[{created_at}] Archivo: {filename} | Idioma: {language} | Modelo: {model_used}")
+        lines.append(text)
+        lines.append("-" * 60 + "\n")
+    return "\n".join(lines).encode("utf-8")
+
 def export_docx(text: str, filename: str = "Transcripción") -> bytes:
     """Export text to a DOCX format byte string."""
     doc = Document()
