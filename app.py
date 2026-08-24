@@ -689,6 +689,11 @@ with tab_upload:
     )
 
     if uploaded:
+        if st.session_state.get("current_file_size") != uploaded.size:
+            st.session_state.pop("last_text", None)
+            st.session_state.pop("ai_result", None)
+            st.session_state["current_file_size"] = uploaded.size
+            
         st.audio(uploaded)
         st.markdown("")
 
@@ -744,6 +749,11 @@ with tab_record:
 
 
         if audio_bytes:
+            if st.session_state.get("current_file_size") != audio_bytes.size:
+                st.session_state.pop("last_text", None)
+                st.session_state.pop("ai_result", None)
+                st.session_state["current_file_size"] = audio_bytes.size
+                
             st.audio(audio_bytes, format="audio/wav")
             st.markdown("")
 
@@ -856,41 +866,42 @@ if st.session_state.get("last_text"):
     words_val   = len(text_val.split())
     chars_val   = len(text_val)
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("🌐 Idioma detectado", lang_val.upper())
-    m2.metric("📊 Palabras",         f"{words_val:,}")
-    m3.metric("🔡 Caracteres",        f"{chars_val:,}")
-
-    edited_result = st.text_area(
-        "Puedes editar la transcripción aquí:",
-        value=text_val,
-        height=280,
-        key="result_editor"
-    )
-
-    st.markdown("#### 💾 Exportar")
-    ec1, ec2, ec3 = st.columns(3)
-    with ec1:
+    res_col1, res_col2, res_col3 = st.columns([1, 4, 1.2])
+    
+    with res_col1:
+        st.markdown("##### 📊 Datos")
+        st.metric("🌐 Idioma", lang_val.upper())
+        st.metric("📊 Palabras", f"{words_val:,}")
+        st.metric("🔡 Caract.", f"{chars_val:,}")
+        
+    with res_col2:
+        edited_result = st.text_area(
+            "Puedes editar la transcripción aquí:",
+            value=text_val,
+            height=280,
+            key="result_editor"
+        )
+        
+    with res_col3:
+        st.markdown("##### 💾 Exportar")
         st.download_button(
-            "📄 Descargar TXT",
+            "📄 TXT",
             data=export_txt(edited_result),
             file_name=f"{Path(fname_val).stem}.txt",
             mime="text/plain",
             use_container_width=True,
             key="exp_txt"
         )
-    with ec2:
         st.download_button(
-            "📝 Descargar DOCX",
+            "📝 DOCX",
             data=export_docx(edited_result, fname_val),
             file_name=f"{Path(fname_val).stem}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             use_container_width=True,
             key="exp_docx"
         )
-    with ec3:
         st.download_button(
-            "📊 Descargar PDF",
+            "📊 PDF",
             data=export_pdf(edited_result, fname_val),
             file_name=f"{Path(fname_val).stem}.pdf",
             mime="application/pdf",
